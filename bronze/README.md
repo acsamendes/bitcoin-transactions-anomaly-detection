@@ -19,7 +19,7 @@ Dado de entrada como ele existe na origem, sai o dado particionado, clusterizado
 
 ## Princípio da camada
 
-Bronze significa cópia fiel da fonte, não bytes crus. A fonte aqui é o dataset público `bigquery-public-data.crypto_bitcoin`, já parseado pelo Google. Reimplementar um parser de blocos Bitcoin não é o objetivo do trabalho.
+Bronze significa cópia fiel da fonte, não bytes crus. A fonte aqui é o dataset público `bigquery-public-data.crypto_bitcoin`.
 
 O que a camada faz:
 
@@ -39,9 +39,9 @@ O que a camada **não** faz:
 
 ## Zona de aterrissagem no GCS
 
-Requisito explícito do enunciado, confirmado com o professor: o dataset precisa passar por arquivo no Cloud Storage antes da Bronze, para permitir processamento fora do BigQuery.
+O dataset é passado como arquivo `.parquet`no Google Cloud Storage antes da Bronze, para permitir processamento fora do BigQuery.
 
-**Bucket:** `gs://${BUCKET}` na região `${LOCATION}` — ambos definidos em [`config.env`](../config.env.example) e criados por [`setup/00-create-bucket.sh`](../setup/00-create-bucket.sh).
+**Bucket:** `gs://${BUCKET}` na região `${LOCATION}`, ambos definidos em [`config.env`](../config.env.example) e criados por [`setup/00-create-bucket.sh`](../setup/00-create-bucket.sh).
 
 | Prefixo | Conteúdo |
 |---|---|
@@ -53,7 +53,7 @@ Requisito explícito do enunciado, confirmado com o professor: o dataset precisa
 
 Parquet foi escolhido por ser o padrão de fato para dados analíticos, com leitura nativa em pandas, PyArrow, Spark e DuckDB. ZSTD comprime melhor que Snappy com desempenho de descompressão comparável, e como os arquivos são lidos essencialmente uma vez, o tamanho pesa mais que a velocidade.
 
-**Nota sobre circularidade.** A fonte é um dataset nativo do BigQuery, sem distribuição em arquivo. O fluxo exporta do BigQuery para o GCS e recarrega para o BigQuery, o que é circular. A justificativa é reproduzir o padrão arquitetural de zona de aterrissagem que existiria caso a origem fosse um sistema externo entregando arquivos, além de habilitar o processamento externo mencionado pelo professor.
+**Nota sobre circularidade.** A fonte é um dataset nativo do BigQuery, sem distribuição em arquivo. O fluxo exporta do BigQuery para o GCS e recarrega para o BigQuery, o que é circular. A justificativa é reproduzir o padrão arquitetural de zona de aterrissagem que existiria caso a origem fosse um sistema externo entregando arquivos, além de habilitar o processamento externo ao BigQuery.
 
 ---
 
@@ -140,8 +140,6 @@ ARRAY(
 
 Note que `addresses` também está encapsulado e exige o mesmo tratamento em um nível adicional. A ordem dos campos dentro do `SELECT AS STRUCT` reproduz exatamente o schema da origem.
 
-Validado com um dia de teste: schema idêntico ao original e contagens preservadas (811.015 outputs e 717.551 inputs em 15/06/2020, os mesmos números obtidos direto da fonte pública).
-
 Como consequência positiva, a reconstrução exige um `CREATE TABLE AS SELECT`, o que permite adicionar os metadados de ingestão na mesma operação, evitando um `UPDATE` em 112 milhões de linhas.
 
 ---
@@ -167,11 +165,9 @@ Trinta vezes mais poda nas análises por data, ao custo de 366 partições em ve
 
 Faz o BigQuery **rejeitar** qualquer consulta sem filtro de data, em vez de executá-la varrendo a tabela inteira. A consulta falha antes de processar, então não custa nada.
 
-Esta é a proteção que faltava na primeira tentativa de ingestão do projeto, que consumiu o crédito de um integrante por permitir varreduras completas de 2,37 TB.
-
 ### Recorte anual em vez da chain completa
 
-A primeira ingestão copiou 1,42 bilhão de transações (2,37 TB) sem partição. Além do custo de armazenamento, cada consulta exploratória custava a varredura integral.
+A ingestão da chain completa tem em torno de 1,42 bilhão de transações (2,37 TB). Além do custo de armazenamento, cada consulta teria custo elevado.
 
 O recorte de 2020 lê 219,7 GB, cerca de **11 vezes menos**, e o particionamento garante que consultas subsequentes custem centavos.
 
@@ -189,12 +185,6 @@ Cada linha carrega duas colunas técnicas:
 O `_batch_id` é um identificador opaco. Ele não precisa ser uma data correta, precisa ser único e consistente. O timestamp real da execução fica em `_ingested_at`.
 
 Custo de armazenamento: desprezível. O BigQuery é colunar e comprime valores constantes repetidos para praticamente zero.
-
-### Sobre a tabela de controle
-
-Uma versão anterior mantinha `bronze._ingestion_log`, com uma linha por execução de carga, para responder "o que aconteceu naquela carga" — pergunta diferente da que `_batch_id` responde, que é "de qual carga veio esta linha".
-
-Ela foi removida do pipeline. O histórico de execução fica em `INFORMATION_SCHEMA.JOBS_BY_PROJECT`, que já registra duração, bytes faturados e slot-milissegundos de todo job do projeto, sem exigir manutenção manual e sem poder divergir do que realmente rodou. A rastreabilidade por linha, essa sim específica do domínio, permanece nas colunas `_batch_id` e `_ingested_at`.
 
 ---
 

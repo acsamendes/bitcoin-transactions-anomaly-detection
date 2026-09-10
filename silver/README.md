@@ -103,7 +103,7 @@ Calcula a idade em três unidades:
 
 Também traz `origem_nao_resolvida` como flag explícita, em vez de deixar nulo silencioso. Na execução validada, o valor foi zero, confirmando que a tabela de referência cobre todos os casos.
 
-O clustering aqui é por `transaction_hash` porque, a jusante, a agregação é por transação, não mais por hash de origem.
+O clustering aqui é por `transaction_hash` porque a agregação é por transação, não mais por hash de origem.
 
 ### `silver.network_context_hourly`
 
@@ -151,53 +151,11 @@ A conclusão é que transações coinbase têm array de inputs **vazia**, e `UNN
 
 **Consequência no desenho:** `tx_enriched` usa `bronze.transactions` como base com `LEFT JOIN` para os agregados. Com `INNER JOIN`, as 53.222 coinbase desapareceriam silenciosamente. Com `LEFT JOIN`, elas aparecem com `n_inputs` nulo, presentes e identificáveis.
 
-### `nulldata` não é populado por este parser
-
-A feature original de OP_RETURN filtrava `script_type = 'nulldata'`, categoria padrão para outputs de dados. Uma verificação retornou **zero** ocorrências em todo o ano.
-
-A investigação revelou que os outputs de valor zero são classificados como `nonstandard`. Distribuição em 15/06/2020:
-
-| `script_type` | Outputs | Com valor zero |
-|---|---:|---:|
-| `pubkeyhash` | 373.558 | 0 |
-| `scripthash` | 335.822 | 0 |
-| `witness_v0_keyhash` | 64.216 | 0 |
-| `nonstandard` | 29.503 | **21.764** |
-| `witness_v0_scripthash` | 7.899 | 0 |
-| `multisig` | 17 | 0 |
-
-A feature morta foi substituída por `out_valor_zero`, que conta outputs com valor exatamente zero. Adicionalmente, `out_nonstandard` foi criada, já que script não padrão é sinal legítimo por si só.
-
-### O limiar de dust foi medido, não chutado
+### O limiar de dust
 
 A definição de dust no Bitcoin Core é econômica: um output é dust quando gastá-lo custaria mais em taxa do que ele vale. O valor depende do tipo de script e da taxa de referência, então não é constante.
 
-Medição em 15/06/2020, sobre 811.015 outputs:
-
-| Critério | Ocorrências |
-|---|---:|
-| Valor exatamente zero | 21.764 |
-| Abaixo de 546 satoshis | 22.299 |
-| Abaixo de 1.000 satoshis | 31.414 |
-| Percentil 5 de valor | 5.317 satoshis |
-
-Descontando os zerados, apenas 535 outputs ficam abaixo de 546 e 9.650 abaixo de 1.000. A escolha do limiar afeta menos de 1,2% dos outputs.
-
 Adotou-se **546 satoshis**, referência do Bitcoin Core para outputs P2PKH, excluindo os zerados, que são fenômeno distinto.
-
-### Não existe "endereço primário"
-
-A implementação inicial extraía `addresses[SAFE_OFFSET(0)]` como `address_primary`. Isso está errado conceitualmente: em multisig, a array contém N chaves e a ordem é a do script, sem hierarquia. Nomear o primeiro de "primário" inventa uma semântica que o dado não tem.
-
-Substituído por `address_single`, preenchido apenas quando existe exatamente um endereço:
-
-```sql
-CASE WHEN ARRAY_LENGTH(o.addresses) = 1
-     THEN o.addresses[SAFE_OFFSET(0)]
-END AS address_single
-```
-
-Para multisig o campo vem nulo e a array completa continua disponível.
 
 ---
 
@@ -220,7 +178,7 @@ WITH origem AS (
 SELECT ... FROM silver.tx_inputs i LEFT JOIN origem o ON ...
 ```
 
-Teste com **um único dia**: 41,51 GB processados. Extrapolando para o ano: aproximadamente **15 TB**, ou cerca de 95 dólares. Duas vezes o crédito disponível.
+Teste com **um único dia**: 41,51 GB processados. Extrapolando para o ano: aproximadamente **15 TB**, ou cerca de 95 dólares.
 
 ### A causa
 
@@ -260,8 +218,6 @@ Ao contrário da Bronze, aqui o descarte é apropriado. Silver é a camada de tr
 
 `STDDEV` é o desvio amostral e exige pelo menos duas linhas, retornando nulo para transações de output único, que são comuns. `STDDEV_POP` retorna zero nesse caso.
 
-A escolha também é conceitualmente correta: você está descrevendo a população de outputs daquela transação, não amostrando dela.
-
 ### `LOGICAL_OR` para RBF
 
 A regra do BIP125 é por transação: basta um input sinalizar para que a transação inteira seja substituível. A agregação correta é `LOGICAL_OR(rbf_signaled)`, não média nem contagem.
@@ -276,7 +232,7 @@ A sinalização por input usa `sequence < 0xFFFFFFFE`. O valor é o máximo de u
 
 ## Metadados e rastreabilidade
 
-As tabelas desaninhadas diretamente da Bronze — `tx_outputs` e `tx_inputs` —
+As tabelas desaninhadas diretamente da Bronze, `tx_outputs` e `tx_inputs`,
 carregam três colunas técnicas:
 
 | Coluna | Responde |
@@ -291,10 +247,6 @@ procedência da Bronze, então repetir `_source_batch_id` seria propagar uma col
 redundante por centenas de milhões de linhas.
 
 A distinção importa porque Silver é a camada mais reprocessada, justamente por ser onde a lógica mora. Sem `_batch_id` próprio, um reprocessamento seria indistinguível do anterior.
-
-Note que a coluna se chama `_processed_at`, não `_ingested_at`: Silver não ingere, transforma.
-
-A tabela `silver._transformation_log`, que registrava uma linha por transformação executada, foi removida junto com a da Bronze: `INFORMATION_SCHEMA.JOBS_BY_PROJECT` cobre o histórico de execução sem manutenção manual. A rastreabilidade por linha permanece nas colunas acima.
 
 ---
 
@@ -341,8 +293,6 @@ Nenhuma feature pode ser sempre zero, sob pena de ser inútil no modelo. Valores
 | `rbf_signaled` | 13.004.620 |
 | Candidatas a CoinJoin | 43.619 |
 | Moeda acima de 5 anos | 27.505 |
-
-Este teste foi o que revelou a feature morta de OP_RETURN antes que ela chegasse ao modelo.
 
 ---
 
