@@ -361,4 +361,4 @@ O caso do `out_opreturn` merece destaque metodológico: a feature teria entrado 
 | **Urgência anômala** | `f_log_taxa_relativa` alto com `f_log_tamanho` normal |
 | **Automação / serviço** | `f_gasto_imediato` igual a 1, `f_rbf` consistente, valores regulares |
 
-Nenhuma dessas combinações foi ensinada ao modelo. A etapa 37 do pipeline verifica se o K-Means as identifica espontaneamente, comparando a taxa de detecção de cada padrão contra o baseline de 1% definido pelo `contamination`.
+Nenhuma dessas combinações foi ensinada ao modelo. A etapa 31 do pipeline verifica se o K-Means as identifica espontaneamente, comparando a taxa de detecção de cada padrão contra o baseline de 1% definido pelo `contamination`.

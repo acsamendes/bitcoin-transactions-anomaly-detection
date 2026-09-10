@@ -294,7 +294,7 @@ A distinção importa porque Silver é a camada mais reprocessada, justamente po
 
 Note que a coluna se chama `_processed_at`, não `_ingested_at`: Silver não ingere, transforma.
 
-A tabela `silver._transformation_log` registra uma linha por transformação executada, com a mesma estrutura do log da Bronze, trocando `ingested_at` por `processed_at` e `linhas_carregadas` por `linhas_geradas`.
+A tabela `silver._transformation_log`, que registrava uma linha por transformação executada, foi removida junto com a da Bronze: `INFORMATION_SCHEMA.JOBS_BY_PROJECT` cobre o histórico de execução sem manutenção manual. A rastreabilidade por linha permanece nas colunas acima.
 
 ---
 
@@ -352,15 +352,13 @@ A ordem importa: existem dependências reais.
 
 | Script | Depende de |
 |---|---|
-| `14-create-log-table.sql` | nada |
-| `15-create-outputs-table.sql` | `bronze.transactions` |
-| `16-create-inputs-table.sql` | `bronze.transactions` |
-| `17-create-transactions-index.sql` | `bronze.transactions`, `bronze.tx_pre2020_ref` |
-| `18-create-coin-age-table.sql` | `tx_inputs` (16) e `tx_origin_index` (17) |
-| `19-create-network-context-per-hour-table.sql` | `bronze.blocks`, `bronze.transactions` |
-| `20-create-enriched-table.sql` | `tx_outputs`, `tx_inputs`, `coin_age` |
-| `21-validate-inputs-outputs.sql` | 15 e 16 |
-| `22-validate-enriched-table.sql` | 20 |
-| `23-insert-transformation-log.sql` | todas |
+| `12-create-outputs-table.sql` | `bronze.transactions` |
+| `13-create-inputs-table.sql` | `bronze.transactions` |
+| `14-create-transactions-index.sql` | `bronze.transactions`, `bronze.tx_pre2020_ref` |
+| `15-create-coin-age-table.sql` | `tx_inputs` (13) e `tx_origin_index` (14) |
+| `16-create-network-context-per-hour-table.sql` | `bronze.blocks`, `bronze.transactions` |
+| `17-create-enriched-table.sql` | `tx_outputs`, `tx_inputs`, `coin_age` |
+| `18-validate-inputs-outputs.sql` | 12 e 13 |
+| `19-validate-enriched-table.sql` | 17 |
 
-O script 20 é o mais pesado da camada: três agregações grandes mais três joins.
+O script 17 é o mais pesado da camada: três agregações grandes mais três joins.
