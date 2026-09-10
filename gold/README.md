@@ -48,7 +48,7 @@ require_partition_filter = TRUE
 
 **Volume:** 112.500.276 linhas (112.553.498 menos as 53.222 coinbase).
 
-Além das features, mantém `transaction_hash`, `block_timestamp` e `block_number` como identificadores, excluídos do treino com `SELECT * EXCEPT (...)`. A descrição completa de cada feature está em [`docs/FEATURES.md`](../../docs/FEATURES.md).
+Além das features, mantém `transaction_hash`, `block_timestamp` e `block_number` como identificadores, excluídos do treino com `SELECT * EXCEPT (...)`. A descrição completa de cada feature está em [`docs/FEATURES.md`](../docs/FEATURES.md).
 
 ### Modelos K-Means
 
@@ -252,7 +252,7 @@ Ele **não descobre nada**. É um corte imposto pelo analista. Com 0,05 marcaria
 
 O que o modelo realmente produz é o `normalized_distance`, que é contínuo. Por isso essa coluna é preservada na tabela: permite reavaliação com qualquer outro limiar sem retreinar nem reprocessar.
 
-Com 112,5 milhões de transações, 1% resulta em aproximadamente 1,125 milhão de anomalias, o que é muito para investigação prática. A etapa 36 analisa a distribuição de distâncias buscando um corte natural nos dados, que seria justificativa empírica melhor que a convenção.
+Com 112,5 milhões de transações, 1% resulta em aproximadamente 1,125 milhão de anomalias, o que é muito para investigação prática. A etapa 30 analisa a distribuição de distâncias buscando um corte natural nos dados, que seria justificativa empírica melhor que a convenção.
 
 ### O `EXCEPT` na subconsulta
 
@@ -421,28 +421,31 @@ Nulos são críticos: o `CREATE MODEL` descarta essas linhas silenciosamente.
 
 ## Ordem de execução
 
-| Script | Descrição |
-|---|---|
-| `24_create_transformation_log.sql` | Tabela de log da camada |
-| `25_create_tx_features.sql` | Matriz de features |
-| `26_validate_tx_features.sql` | Verificação de nulos |
-| `27_analyze_feature_variance.sql` | Diagnóstico de variância e cauda |
-| `28_insert_log_features.sql` | Registro da matriz |
-| `29_create_kmeans_alternatives.sql` | Modelos K = 3, 5, 6, 12 |
-| `30_create_kmeans_k8.sql` | Modelos K = 8 em 1%, 10% e 100% |
-| `31_evaluate_models.sql` | Comparação das sete configurações |
-| `32_training_info.sql` | Convergência e tamanho dos clusters |
-| `33_centroids.sql` | Perfil de cada cluster |
-| `34_create_anomaly_scores.sql` | Inferência sobre a base completa |
-| `35_validate_anomaly_scores.sql` | Validação |
-| `36_analyze_distance_distribution.sql` | Percentis e escolha do corte |
-| `37_structural_agreement.sql` | Concordância com heurísticas estruturais |
-| `38_top_anomalies.sql` | Ranking para inspeção manual |
-| `39_insert_log_scores.sql` | Registro dos scores |
+A numeração é global e intercala `gold/` e `model/`, porque a ordem de execução
+não respeita a fronteira entre as duas pastas: o modelo é treinado sobre a matriz,
+a inferência volta a escrever no `gold`, e a análise volta ao `model`.
 
-Execute o passo 27 **antes** de treinar. Foi ele que revelou as caudas pesadas e a feature sem variância.
+| Script | Pasta | Descrição |
+|---|---|---|
+| `20-create-features-matrix.sql` | `gold/` | Matriz de features |
+| `21-validate-features-matrix.sql` | `gold/` | Verificação de nulos |
+| `22-analyze-features-variance.sql` | `gold/` | Diagnóstico de variância e cauda |
+| `23-create-kmeans-k-sweep.sql` | `model/` | Modelos K = 3, 5, 6, 12 |
+| `24-create-kmeans-k8-sample-sweep.sql` | `model/` | Modelos K = 8 em 1%, 10% e 100% |
+| `25-evaluate-kmeans-models.sql` | `model/` | Comparação das sete configurações |
+| `26-evaluate-training-info.sql` | `model/` | Convergência e tamanho dos clusters |
+| `27-analyze-model-centroids.sql` | `model/` | Perfil de cada cluster |
+| `28-create-anomaly-scores.sql` | `gold/` | Inferência sobre a base completa |
+| `29-validate-anomaly-scores.sql` | `gold/` | Validação |
+| `30-analyze-distance-cutoffs.sql` | `gold/` | Percentis e escolha do corte |
+| `31-alignment-with-structural-heuristics.sql` | `model/` | Concordância com heurísticas estruturais |
+| `32-analyze-top-anomalies.sql` | `gold/` | Ranking para inspeção manual |
+| `33-create-anomaly-priority-view.sql` | `model/` | View de faixas de prioridade |
+| `34-analyze-priority-view.sql` | `model/` | Distribuição das faixas |
 
-O passo 34 é o mais caro da camada, aplicando o modelo sobre 112,5 milhões de linhas.
+Execute o passo 22 **antes** de treinar. Foi ele que revelou as caudas pesadas e a feature sem variância.
+
+O passo 28 é o mais caro da camada, aplicando o modelo sobre 112,5 milhões de linhas.
 
 ---
 

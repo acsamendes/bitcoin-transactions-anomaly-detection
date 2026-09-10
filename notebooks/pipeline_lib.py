@@ -71,7 +71,10 @@ def carregar_config(caminho=None, permitir_exemplo=False):
 # O verbo do nome do arquivo diz se a etapa persiste algo. E a mesma convencao
 # documentada no README, aqui usada como classificacao executavel.
 VERBOS_ESCRITA = {"create", "export", "load", "insert", "clean"}
-VERBOS_LEITURA = {"validate", "analyze", "evaluate"}
+# "alignment" e substantivo, nao verbo, e destoa do padrao NN-verbo-objeto. Esta
+# aqui porque a etapa 31 usa esse nome no console do BigQuery e os dois lados
+# precisam bater; "validate" ou "analyze" a encaixariam na convencao.
+VERBOS_LEITURA = {"validate", "analyze", "evaluate", "alignment"}
 
 _PADRAO_NOME = re.compile(r"^(\d{2})-([a-z]+)-(.+)\.sql$")
 

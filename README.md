@@ -54,7 +54,7 @@ Esse modelo produz padrões estruturais reconhecíveis. Um pagamento comum gera 
 - Matriz de 21 features por transação
 - Modelo K-Means com seleção de K por métrica
 - Detecção de anomalias com score contínuo preservado
-- Rastreabilidade completa por linha e por execução
+- Rastreabilidade por linha, com identificador de lote e timestamp de processamento
 
 ---
 
@@ -89,58 +89,50 @@ bitcoin-transactions-anomaly-detection/
 │   └── 01-create-datasets.sql
 ├── bronze/
 │   ├── README.md
-│   ├── 02-create-log-table.sql
-│   ├── 03-export-blocks-to-gcs.sql
-│   ├── 04-export-transactions-to-gcs.sql
-│   ├── 05-export-references-pre-2020-to-gcs.sql
-│   ├── 06-load-gcs-staging.sql
-│   ├── 07-create-blocks-table.sql
-│   ├── 08-create-transactions-table.sql
-│   ├── 09-create-references-pre-2020-table.sql
-│   ├── 10-validate-blocks.sql
-│   ├── 11-validate-transactions.sql
-│   ├── 12-clean-staging-tables.sql
-│   └── 13-insert-ingestion-log.sql
+│   ├── 02-export-blocks-to-gcs.sql
+│   ├── 03-export-transactions-to-gcs.sql
+│   ├── 04-export-references-pre-2020-to-gcs.sql
+│   ├── 05-load-gcs-staging.sql
+│   ├── 06-create-blocks-table.sql
+│   ├── 07-create-transactions-table.sql
+│   ├── 08-create-references-pre-2020-table.sql
+│   ├── 09-validate-blocks.sql
+│   ├── 10-validate-transactions.sql
+│   └── 11-clean-staging-tables.sql
 ├── silver/
 │   ├── README.md
-│   ├── 14-create-log-table.sql
-│   ├── 15-create-outputs-table.sql
-│   ├── 16-create-inputs-table.sql
-│   ├── 17-create-transactions-index.sql
-│   ├── 18-create-coin-age-table.sql
-│   ├── 19-create-network-context-per-hour-table.sql
-│   ├── 20-create-enriched-table.sql
-│   ├── 21-validate-inputs-outputs.sql
-│   ├── 22-validate-enriched-table.sql
-│   └── 23-insert-transformation-log.sql
+│   ├── 12-create-outputs-table.sql
+│   ├── 13-create-inputs-table.sql
+│   ├── 14-create-transactions-index.sql
+│   ├── 15-create-coin-age-table.sql
+│   ├── 16-create-network-context-per-hour-table.sql
+│   ├── 17-create-enriched-table.sql
+│   ├── 18-validate-inputs-outputs.sql
+│   └── 19-validate-enriched-table.sql
 ├── gold/
 │   ├── README.md
-│   ├── 24-create-log-table.sql
-│   ├── 25-create-features-matrix.sql
-│   ├── 26-validate-features-matrix.sql
-│   ├── 27-analyze-features-variance.sql
-│   └── 28-insert-features-log.sql
+│   ├── 20-create-features-matrix.sql
+│   ├── 21-validate-features-matrix.sql
+│   ├── 22-analyze-features-variance.sql
+│   ├── 28-create-anomaly-scores.sql
+│   ├── 29-validate-anomaly-scores.sql
+│   ├── 30-analyze-distance-cutoffs.sql
+│   └── 32-analyze-top-anomalies.sql
 ├── model/
-│   ├── 29-create-kmeans-k-sweep.sql
-│   ├── 30-create-kmeans-k8-sample-sweep.sql
-│   ├── 31-evaluate-kmeans-models.sql
-│   ├── 32-evaluate-training-info.sql
-│   ├── 33-analyze-model-centroids.sql
-│   ├── 34-create-anomaly-scores.sql
-│   ├── 35-validate-anomaly-scores.sql
-│   ├── 36-analyze-distance-cutoffs.sql
-│   ├── 37-validate-known-patterns.sql
-│   ├── 38-analyze-top-anomalies.sql
-│   ├── 39-insert-scores-log.sql
-│   ├── 40-create-anomaly-priority-view.sql
-│   └── 41-analyze-priority-view.sql
+│   ├── 23-create-kmeans-k-sweep.sql
+│   ├── 24-create-kmeans-k8-sample-sweep.sql
+│   ├── 25-evaluate-kmeans-models.sql
+│   ├── 26-evaluate-training-info.sql
+│   ├── 27-analyze-model-centroids.sql
+│   ├── 31-alignment-with-structural-heuristics.sql
+│   ├── 33-create-anomaly-priority-view.sql
+│   └── 34-analyze-priority-view.sql
 ├── docs/
 │   └── FEATURES.md
 └── notebooks/
     ├── 00-run-pipeline.ipynb
     ├── 01-apresentacao.ipynb
-    ├── pipeline_lib.py
-    └── verificar_offline.py
+    └── pipeline_lib.py
 ```
 
 ---
@@ -228,43 +220,46 @@ Três etapas exigem elevar temporariamente o limite de bytes faturados:
 
 | Etapa | Limite necessário | Motivo |
 |---|---|---|
-| 04 | 250 GB | Exportação de `transactions` (219,7 GB de leitura) |
-| 05 | 60 GB | Exportação da referência pré-2020 (~40 GB) |
-| 34 | 100 GB | Inferência sobre 112,5 milhões de linhas |
+| 03 | 250 GB | Exportação de `transactions` (219,7 GB de leitura) |
+| 04 | 60 GB | Exportação da referência pré-2020 (~40 GB) |
+| 28 | 100 GB | Inferência sobre 112,5 milhões de linhas |
 
 Retorne ao limite padrão após cada uma.
 
 ### Validação
 
-As etapas 10, 11, 21, 22, 26, 27 e 35 são consultas de validação. Os valores esperados estão documentados nos READMEs de cada camada. Divergência indica falha na etapa anterior e o pipeline não deve prosseguir.
+As etapas 09, 10, 18, 19, 21, 22 e 29 são consultas de validação. Os valores esperados estão documentados nos READMEs de cada camada. Divergência indica falha na etapa anterior e o pipeline não deve prosseguir.
 
 ---
 
 ## Notebooks
 
-Dois notebooks com responsabilidades que não se sobrepõem. Nenhum contém SQL: ambos
-leem os arquivos do repositório, resolvem os marcadores e submetem ao BigQuery, de
-modo que os `.sql` seguem sendo a fonte única de verdade.
+Dois notebooks com responsabilidades que não se sobrepõem, e que rodam em lugares
+diferentes de propósito.
 
-| Notebook | Papel |
-|---|---|
-| [`notebooks/00-run-pipeline.ipynb`](notebooks/00-run-pipeline.ipynb) | Executa as 41 etapas na ordem e grava `manifesto.json` com o custo real de cada job |
-| [`notebooks/01-apresentacao.ipynb`](notebooks/01-apresentacao.ipynb) | Apresenta os resultados. Estruturalmente incapaz de escrever em produção |
+### [`notebooks/00-run-pipeline.ipynb`](notebooks/00-run-pipeline.ipynb) — execução
 
-A separação é o mecanismo de segurança: o notebook de apresentação não tem caminho
-de código capaz de disparar o pipeline, então não existe modo errado a selecionar sob
-pressão. Ele divide as etapas de escrita em três camadas de profundidade — *dry run*
-de todas, execução real de três sobre o recorte de um dia num dataset descartável, e
-as leituras sobre o ano completo.
+Roda **localmente**, ao lado do repositório. Executa as 34 etapas na ordem, um job
+por arquivo, e grava `manifesto.json` com `job_id`, duração e bytes faturados de
+cada uma. Não contém SQL: lê os arquivos `.sql`, resolve os marcadores de ambiente
+com os valores de `config.env` e submete. Leva dezenas de minutos e custa dinheiro.
 
-[`notebooks/verificar_offline.py`](notebooks/verificar_offline.py) valida os dois
-notebooks **sem tocar no BigQuery e sem custo**: convenção de nomes, resolução de
-marcadores, guarda de escrita, e execução das células de gráfico contra dados
-sintéticos.
+### [`notebooks/01-apresentacao.ipynb`](notebooks/01-apresentacao.ipynb) — apresentação
 
-```bash
-python notebooks/verificar_offline.py
-```
+**Autocontido**, para colar direto nos notebooks compartilhados do BigQuery Studio.
+Não importa nada do repositório e não lê `config.env`: o SQL das seis consultas de
+resultado vai embutido, e o projeto vem do contexto da sessão. As consultas são
+identificadas pelo **número** — `25`, `27`, `30`, `31`, `32`, `34` — que é o que
+casa com as consultas salvas do projeto, já que os nomes após o número divergem.
+
+Ele executa **apenas leitura**: `ML.EVALUATE` e `ML.CENTROIDS`, que leem metadados
+do modelo, e quatro agregações sobre tabelas particionadas. Nenhuma célula escreve,
+nenhuma reprocessa o pipeline. Todo job carrega um teto de bytes faturados, de modo
+que uma consulta cara falha de graça em vez de gerar fatura.
+
+A duplicação do SQL é o preço da autonomia: um notebook que roda sozinho no
+BigQuery Studio não tem o repositório ao lado para ler. Ao alterar uma consulta em
+`model/`, atualize o `SQL_NN` correspondente no notebook.
 
 ## Documentação por Camada
 

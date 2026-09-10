@@ -190,21 +190,11 @@ O `_batch_id` é um identificador opaco. Ele não precisa ser uma data correta, 
 
 Custo de armazenamento: desprezível. O BigQuery é colunar e comprime valores constantes repetidos para praticamente zero.
 
-### Tabela de controle
+### Sobre a tabela de controle
 
-`bronze._ingestion_log` registra uma linha por execução de carga:
+Uma versão anterior mantinha `bronze._ingestion_log`, com uma linha por execução de carga, para responder "o que aconteceu naquela carga" — pergunta diferente da que `_batch_id` responde, que é "de qual carga veio esta linha".
 
-| Coluna | Conteúdo |
-|---|---|
-| `batch_id` | Liga o log às linhas de dado |
-| `tabela_destino` | Tabela carregada |
-| `tabela_origem` | Caminho `gs://` ou dataset de origem |
-| `ingested_at` | Momento da carga |
-| `periodo_inicio` / `periodo_fim` | Recorte carregado |
-| `linhas_carregadas` | Contagem resultante |
-| `observacao` | Decisões tomadas naquela carga |
-
-As colunas na tabela de dados respondem "de qual carga veio esta linha". A tabela de controle responde "o que aconteceu naquela carga". São perguntas diferentes, por isso as duas coisas coexistem.
+Ela foi removida do pipeline. O histórico de execução fica em `INFORMATION_SCHEMA.JOBS_BY_PROJECT`, que já registra duração, bytes faturados e slot-milissegundos de todo job do projeto, sem exigir manutenção manual e sem poder divergir do que realmente rodou. A rastreabilidade por linha, essa sim específica do domínio, permanece nas colunas `_batch_id` e `_ingested_at`.
 
 ---
 
@@ -231,19 +221,17 @@ A soma de `transaction_count` em `bronze.blocks` deve dar exatamente 112.553.498
 
 | Script | Descrição | Limite de bytes |
 |---|---|---|
-| `02-create-log-table.sql` | Cria `bronze._ingestion_log` | padrão |
-| `03-export-blocks-to-gcs.sql` | Exporta blocos para o GCS | padrão |
-| `04-export-transactions-to-gcs.sql` | Exporta transações para o GCS | **250 GB** |
-| `05-export-references-pre-2020-to-gcs.sql` | Exporta referência pré-2020 | **60 GB** |
-| `06-load-gcs-staging.sql` | Carrega do GCS para staging (gratuito) | padrão |
-| `07-create-blocks-table.sql` | Cria `bronze.blocks` | padrão |
-| `08-create-transactions-table.sql` | Cria `bronze.transactions` com reconstrução | padrão |
-| `09-create-references-pre-2020-table.sql` | Cria a tabela de referência | padrão |
-| `10-validate-blocks.sql` | Validação | padrão |
-| `11-validate-transactions.sql` | Validação | padrão |
-| `12-clean-staging-tables.sql` | Remove as tabelas de staging | padrão |
-| `13-insert-ingestion-log.sql` | Registra as três cargas | padrão |
+| `02-export-blocks-to-gcs.sql` | Exporta blocos para o GCS | padrão |
+| `03-export-transactions-to-gcs.sql` | Exporta transações para o GCS | **250 GB** |
+| `04-export-references-pre-2020-to-gcs.sql` | Exporta referência pré-2020 | **60 GB** |
+| `05-load-gcs-staging.sql` | Carrega do GCS para staging (gratuito) | padrão |
+| `06-create-blocks-table.sql` | Cria `bronze.blocks` | padrão |
+| `07-create-transactions-table.sql` | Cria `bronze.transactions` com reconstrução | padrão |
+| `08-create-references-pre-2020-table.sql` | Cria a tabela de referência | padrão |
+| `09-validate-blocks.sql` | Validação | padrão |
+| `10-validate-transactions.sql` | Validação | padrão |
+| `11-clean-staging-tables.sql` | Remove as tabelas de staging | padrão |
 
-**Confirme no console que os arquivos apareceram no bucket** antes de executar o passo 06.
+**Confirme no console que os arquivos apareceram no bucket** antes de executar o passo 05.
 
-**Não pule o passo 12.** As tabelas de staging duplicam 220 GB e custam armazenamento sem servir a nenhum propósito depois que a Bronze está construída. A zona de aterrissagem real são os arquivos no GCS.
+**Não pule o passo 11.** As tabelas de staging duplicam 220 GB e custam armazenamento sem servir a nenhum propósito depois que a Bronze está construída. A zona de aterrissagem real são os arquivos no GCS.
