@@ -19,5 +19,5 @@ SELECT
   COUNTIF(f_razao_size_vsize IS NULL)     AS n_size_vsize,
   COUNTIF(IS_NAN(f_log_cv_outputs))       AS nan_cv,
   COUNTIF(IS_INF(f_log_taxa_relativa))    AS inf_taxa
-FROM `trabalho1-pdm-2026.gold.tx_features`
+FROM `gold.tx_features`
 WHERE DATE(block_timestamp) BETWEEN DATE '2020-01-01' AND DATE '2020-12-31';

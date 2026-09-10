@@ -1,4 +1,4 @@
-CREATE OR REPLACE TABLE `trabalho1-pdm-2026.gold.tx_features`
+CREATE OR REPLACE TABLE `gold.tx_features`
 PARTITION BY DATE(block_timestamp)
 CLUSTER BY transaction_hash
 OPTIONS (
@@ -47,8 +47,8 @@ SELECT
   '20260909-gold-v1'  AS _batch_id,
   CURRENT_TIMESTAMP() AS _processed_at
 
-FROM `trabalho1-pdm-2026.silver.tx_enriched` AS t
-LEFT JOIN `trabalho1-pdm-2026.silver.network_context_hourly` AS n
+FROM `silver.tx_enriched` AS t
+LEFT JOIN `silver.network_context_hourly` AS n
   ON t.hora = n.hora
  AND DATE(n.hora) BETWEEN DATE '2020-01-01' AND DATE '2020-12-31'
 WHERE DATE(t.block_timestamp) BETWEEN DATE '2020-01-01' AND DATE '2020-12-31'

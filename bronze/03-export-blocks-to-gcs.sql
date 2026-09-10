@@ -1,5 +1,5 @@
 EXPORT DATA OPTIONS (
-  uri = 'gs://trabalho1-pdm-2026-landing/blocks/blocks-*.parquet',
+  uri = 'gs://${BUCKET}/blocks/blocks-*.parquet',
   format = 'PARQUET', compression = 'ZSTD', overwrite = TRUE
 ) AS
 SELECT *

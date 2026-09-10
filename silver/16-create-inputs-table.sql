@@ -1,4 +1,4 @@
-CREATE OR REPLACE TABLE `trabalho1-pdm-2026.silver.tx_inputs`
+CREATE OR REPLACE TABLE `silver.tx_inputs`
 PARTITION BY DATE(block_timestamp)
 CLUSTER BY spent_transaction_hash
 OPTIONS (
@@ -26,6 +26,6 @@ SELECT
   t._batch_id                 AS _source_batch_id,
   '20260909-silver-v1'        AS _batch_id,
   CURRENT_TIMESTAMP()         AS _processed_at
-FROM `trabalho1-pdm-2026.bronze.transactions` AS t,
+FROM `bronze.transactions` AS t,
 UNNEST(t.inputs) AS i
 WHERE DATE(t.block_timestamp) BETWEEN DATE '2020-01-01' AND DATE '2020-12-31';

@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS `trabalho1-pdm-2026.bronze._ingestion_log` (
+CREATE TABLE IF NOT EXISTS `bronze._ingestion_log` (
   batch_id           STRING    NOT NULL,
   tabela_destino     STRING    NOT NULL,
   tabela_origem      STRING    NOT NULL,

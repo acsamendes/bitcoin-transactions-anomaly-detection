@@ -1,6 +1,6 @@
 WITH base AS (
   SELECT *
-  FROM `trabalho1-pdm-2026.silver.tx_enriched`
+  FROM `silver.tx_enriched`
   WHERE DATE(block_timestamp) BETWEEN DATE '2020-01-01' AND DATE '2020-12-31'
 ),
 metricas AS (

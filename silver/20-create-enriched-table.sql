@@ -1,4 +1,4 @@
-CREATE OR REPLACE TABLE `trabalho1-pdm-2026.silver.tx_enriched`
+CREATE OR REPLACE TABLE `silver.tx_enriched`
 PARTITION BY DATE(block_timestamp)
 CLUSTER BY transaction_hash
 OPTIONS (
@@ -22,7 +22,7 @@ WITH agg_outputs AS (
     COUNTIF(script_type LIKE 'witness%')               AS out_segwit,
     COUNTIF(address_count > 1)                         AS out_multi_endereco,
     COUNT(DISTINCT script_type)                        AS out_tipos_script
-  FROM `trabalho1-pdm-2026.silver.tx_outputs`
+  FROM `silver.tx_outputs`
   WHERE DATE(block_timestamp) BETWEEN DATE '2020-01-01' AND DATE '2020-12-31'
   GROUP BY transaction_hash
 ),
@@ -40,7 +40,7 @@ agg_inputs AS (
     COUNTIF(script_type LIKE 'witness%') AS in_segwit,
     LOGICAL_OR(rbf_signaled)             AS rbf_signaled,
     COUNT(DISTINCT script_type)          AS in_tipos_script
-  FROM `trabalho1-pdm-2026.silver.tx_inputs`
+  FROM `silver.tx_inputs`
   WHERE DATE(block_timestamp) BETWEEN DATE '2020-01-01' AND DATE '2020-12-31'
   GROUP BY transaction_hash
 ),
@@ -55,7 +55,7 @@ agg_idade AS (
     MAX(idade_horas)                 AS idade_max_horas,
     COUNTIF(idade_dias > 365)        AS moedas_acima_1ano,
     LOGICAL_OR(origem_nao_resolvida) AS tem_origem_nao_resolvida
-  FROM `trabalho1-pdm-2026.silver.coin_age`
+  FROM `silver.coin_age`
   WHERE DATE(block_timestamp) BETWEEN DATE '2020-01-01' AND DATE '2020-12-31'
   GROUP BY transaction_hash
 )
@@ -115,7 +115,7 @@ SELECT
   '20260909-silver-v1' AS _batch_id,
   CURRENT_TIMESTAMP()  AS _processed_at
 
-FROM `trabalho1-pdm-2026.bronze.transactions` AS t
+FROM `bronze.transactions` AS t
 LEFT JOIN agg_outputs AS o ON t.`hash` = o.transaction_hash
 LEFT JOIN agg_inputs  AS i ON t.`hash` = i.transaction_hash
 LEFT JOIN agg_idade   AS a ON t.`hash` = a.transaction_hash

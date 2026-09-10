@@ -1,0 +1,7 @@
+# Configuracao de ambiente. Cada integrante aponta para o proprio projeto e a
+# propria conta de faturamento; o gabarito versionado e config.env.example.
+config.env
+
+# Python
+__pycache__/
+*.py[cod]

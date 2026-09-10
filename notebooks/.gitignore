@@ -1,0 +1,8 @@
+# Manifesto de execucao: gerado em modo EXECUCAO, especifico do ambiente de quem roda.
+manifesto.json
+
+# Cache do modulo compartilhado.
+__pycache__/
+
+# Figuras da verificacao offline: geradas com dados sinteticos.
+_figuras_verificacao/

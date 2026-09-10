@@ -1,6 +1,6 @@
 WITH base AS (
   SELECT *
-  FROM `trabalho1-pdm-2026.gold.tx_features`
+  FROM `gold.tx_features`
   WHERE DATE(block_timestamp) BETWEEN DATE '2020-01-01' AND DATE '2020-12-31'
 ),
 stats AS (

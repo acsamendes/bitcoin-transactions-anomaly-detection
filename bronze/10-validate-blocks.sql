@@ -6,5 +6,5 @@ SELECT
   MAX(DATE(timestamp))        AS fim,
   SUM(transaction_count)      AS transacoes_esperadas,
   COUNT(DISTINCT _batch_id)   AS lotes
-FROM `trabalho1-pdm-2026.bronze.blocks`
+FROM `bronze.blocks`
 WHERE DATE(timestamp) BETWEEN DATE '2020-01-01' AND DATE '2020-12-31';

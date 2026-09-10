@@ -1,4 +1,4 @@
-CREATE OR REPLACE TABLE `trabalho1-pdm-2026.silver.network_context_hourly`
+CREATE OR REPLACE TABLE `silver.network_context_hourly`
 PARTITION BY DATE(hora)
 CLUSTER BY hora
 OPTIONS (
@@ -14,7 +14,7 @@ WITH blocos_hora AS (
     AVG(transaction_count)           AS tx_media_por_bloco,
     SUM(transaction_count)           AS tx_total_hora,
     AVG(weight) / 4000000            AS ocupacao_media
-  FROM `trabalho1-pdm-2026.bronze.blocks`
+  FROM `bronze.blocks`
   WHERE DATE(timestamp) BETWEEN DATE '2020-01-01' AND DATE '2020-12-31'
   GROUP BY hora
 ),
@@ -26,7 +26,7 @@ taxas_hora AS (
     AVG(SAFE_DIVIDE(fee, virtual_size))    AS fee_vbyte_media,
     AVG(fee)                               AS fee_media_satoshi,
     COUNT(*)                               AS tx_na_hora
-  FROM `trabalho1-pdm-2026.bronze.transactions`
+  FROM `bronze.transactions`
   WHERE DATE(block_timestamp) BETWEEN DATE '2020-01-01' AND DATE '2020-12-31'
     AND NOT is_coinbase
   GROUP BY hora
